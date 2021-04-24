@@ -7,6 +7,7 @@ const cors = require("cors");
 const canUse = require("./utils/canUse");
 
 const bodyParser = require("body-parser");
+const verifyAccess = require("./utils/verifyAccess");
 
 //Middlewares
 app.use(cors());
@@ -18,7 +19,7 @@ router.get("/:email", (req, res) => {
   res.send(`Welcome to Flamebond database of ${req.params.email}`);
 });
 
-router.get("/:email/:collection", async (req, res) => {
+router.get("/:email/:collection", verifyAccess("get"), async (req, res) => {
   try {
     const { email, collection } = req.params;
     const data = await firestore.get(email, collection);
@@ -29,23 +30,27 @@ router.get("/:email/:collection", async (req, res) => {
   }
 });
 
-router.get("/:email/:collection/:doc", async (req, res) => {
-  try {
-    const { email, collection, doc } = req.params;
-    if (!canUse([email, collection, doc]))
-      return res.send({
-        error: `First character cannot be "_"`,
-        success: false,
-      });
-    const data = await firestore.getOne(email, collection, doc);
-    res.send(data);
-  } catch ({ message: error }) {
-    console.log({ error, success: false });
-    res.send({ error, success: false });
+router.get(
+  "/:email/:collection/:doc",
+  verifyAccess("getOne"),
+  async (req, res) => {
+    try {
+      const { email, collection, doc } = req.params;
+      if (!canUse([email, collection, doc]))
+        return res.send({
+          error: `First character cannot be "_"`,
+          success: false,
+        });
+      const data = await firestore.getOne(email, collection, doc);
+      res.send(data);
+    } catch ({ message: error }) {
+      console.log({ error, success: false });
+      res.send({ error, success: false });
+    }
   }
-});
+);
 
-router.post("/:email/:collection", async (req, res) => {
+router.post("/:email/:collection", verifyAccess("post"), async (req, res) => {
   try {
     const { email, collection } = req.params;
     if (!canUse([email, collection]))
@@ -77,54 +82,62 @@ router.post("/:email/:collection", async (req, res) => {
   }
 });
 
-router.post("/:email/:collection/:id", async (req, res) => {
-  try {
-    const { email, collection, id } = req.params;
-    if (!canUse([email, collection, id]))
-      return res.send({
-        error: `First character cannot be "_"`,
-        success: false,
+router.post(
+  "/:email/:collection/:id",
+  verifyAccess("patch"),
+  async (req, res) => {
+    try {
+      const { email, collection, id } = req.params;
+      if (!canUse([email, collection, id]))
+        return res.send({
+          error: `First character cannot be "_"`,
+          success: false,
+        });
+      const { _master, fields } = await firestore.getOne(
+        email,
+        "_collections",
+        collection
+      );
+      const masterField = req.body?.[_master];
+      if (!masterField)
+        return res.send({
+          error: `Field: "${_master}" is required!`,
+          success: false,
+        });
+      const upload = {};
+      fields.forEach(({ key }) => {
+        if (req.body?.[key] != undefined) upload[key] = req.body?.[key] || null;
       });
-    const { _master, fields } = await firestore.getOne(
-      email,
-      "_collections",
-      collection
-    );
-    const masterField = req.body?.[_master];
-    if (!masterField)
-      return res.send({
-        error: `Field: "${_master}" is required!`,
-        success: false,
-      });
-    const upload = {};
-    fields.forEach(({ key }) => {
-      if (req.body?.[key] != undefined) upload[key] = req.body?.[key] || null;
-    });
 
-    const obj = await firestore.set(email, collection, id, upload);
-    res.send({ ...obj, success: !!obj });
-  } catch ({ message: error }) {
-    console.log({ error, success: false });
-    res.send({ error, success: false });
+      const obj = await firestore.set(email, collection, id, upload);
+      res.send({ ...obj, success: !!obj });
+    } catch ({ message: error }) {
+      console.log({ error, success: false });
+      res.send({ error, success: false });
+    }
   }
-});
+);
 
-router.delete("/:email/:collection/:id", async (req, res) => {
-  try {
-    const { email, collection, id } = req.params;
-    if (!canUse([email, collection, id]))
-      return res.send({
-        error: `First character cannot be "_"`,
-        success: false,
-      });
-    const deleted = await firestore.remove(email, collection, id);
-    console.log(deleted);
-    res.send({ success: !!deleted });
-  } catch ({ message: error }) {
-    console.log({ error, success: false });
-    res.send({ error, success: false });
+router.delete(
+  "/:email/:collection/:id",
+  verifyAccess("delete"),
+  async (req, res) => {
+    try {
+      const { email, collection, id } = req.params;
+      if (!canUse([email, collection, id]))
+        return res.send({
+          error: `First character cannot be "_"`,
+          success: false,
+        });
+      const deleted = await firestore.remove(email, collection, id);
+      console.log(deleted);
+      res.send({ success: !!deleted });
+    } catch ({ message: error }) {
+      console.log({ error, success: false });
+      res.send({ error, success: false });
+    }
   }
-});
+);
 
 app.listen(PORT, () => console.log(`Server live at ${PORT}`));
 
