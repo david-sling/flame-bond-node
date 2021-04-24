@@ -9,7 +9,7 @@ const canUse = require("./utils/canUse");
 const bodyParser = require("body-parser");
 const verifyAccess = require("./utils/verifyAccess");
 
-//Middlewares
+//MIDDLEWARES
 app.use(cors());
 app.use(bodyParser.json());
 
@@ -19,6 +19,7 @@ router.get("/:email", (req, res) => {
   res.send(`Welcome to Flamebond database of ${req.params.email}`);
 });
 
+//GET COLLECTION
 router.get("/:email/:collection", verifyAccess("get"), async (req, res) => {
   try {
     const { email, collection } = req.params;
@@ -30,6 +31,7 @@ router.get("/:email/:collection", verifyAccess("get"), async (req, res) => {
   }
 });
 
+//GET ENTRY
 router.get(
   "/:email/:collection/:doc",
   verifyAccess("getOne"),
@@ -50,6 +52,7 @@ router.get(
   }
 );
 
+//POST ENTRY
 router.post("/:email/:collection", verifyAccess("post"), async (req, res) => {
   try {
     const { email, collection } = req.params;
@@ -82,13 +85,14 @@ router.post("/:email/:collection", verifyAccess("post"), async (req, res) => {
   }
 });
 
+//PATCH ENTRY
 router.patch(
-  "/:email/:collection/:id",
+  "/:email/:collection/:doc",
   verifyAccess("patch"),
   async (req, res) => {
     try {
-      const { email, collection, id } = req.params;
-      if (!canUse([email, collection, id]))
+      const { email, collection, doc } = req.params;
+      if (!canUse([email, collection, doc]))
         return res.send({
           error: `First character cannot be "_"`,
           success: false,
@@ -109,7 +113,7 @@ router.patch(
         if (req.body?.[key] != undefined) upload[key] = req.body?.[key] || null;
       });
 
-      const obj = await firestore.set(email, collection, id, upload);
+      const obj = await firestore.set(email, collection, doc, upload);
       res.send({ ...obj, success: !!obj });
     } catch ({ message: error }) {
       console.log({ error, success: false });
@@ -118,18 +122,19 @@ router.patch(
   }
 );
 
+//DELETE ENTRY
 router.delete(
-  "/:email/:collection/:id",
+  "/:email/:collection/:doc",
   verifyAccess("delete"),
   async (req, res) => {
     try {
-      const { email, collection, id } = req.params;
-      if (!canUse([email, collection, id]))
+      const { email, collection, doc } = req.params;
+      if (!canUse([email, collection, doc]))
         return res.send({
           error: `First character cannot be "_"`,
           success: false,
         });
-      const deleted = await firestore.remove(email, collection, id);
+      const deleted = await firestore.remove(email, collection, doc);
       console.log(deleted);
       res.send({ success: !!deleted });
     } catch ({ message: error }) {
