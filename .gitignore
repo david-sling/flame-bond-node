@@ -1,2 +1,4 @@
+# /serviceAccountKey.js
 /serviceAccountKey.json
+/.env
 node_modules

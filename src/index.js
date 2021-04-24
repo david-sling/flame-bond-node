@@ -82,7 +82,7 @@ router.post("/:email/:collection", verifyAccess("post"), async (req, res) => {
   }
 });
 
-router.post(
+router.patch(
   "/:email/:collection/:id",
   verifyAccess("patch"),
   async (req, res) => {
